@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PharmaCare Pro - Online Pharmacy Management System</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Chart.js for Admin Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Demo Account Quick Switcher -->
+  <div class="demo-bar">
+    <div class="demo-bar-left">
+      <span class="demo-bar-badge"><i class="fa-solid fa-bolt"></i> Quick Switcher</span>
+      <span>Test as Seeded Role:</span>
+    </div>
+    <div class="demo-pills">
+      <button class="btn-demo-pill" id="demoCustomerBtn">
+        <i class="fa-solid fa-user"></i> Customer (John)
+      </button>
+      <button class="btn-demo-pill" id="demoPharmaBtn">
+        <i class="fa-solid fa-user-doctor"></i> Pharmacist (Dr. Sarah)
+      </button>
+      <button class="btn-demo-pill" id="demoAdminBtn">
+        <i class="fa-solid fa-shield-halved"></i> Admin (Admin User)
+      </button>
+      <button class="btn-demo-pill" id="demoLogoutBtn" style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4);">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-brand" onclick="switchTab('storefront')">
+      <img src="images/logo.svg" alt="PharmaCare Logo">
+      <div>Pharma<span>Care</span> <small style="font-size: 0.72rem; font-weight: 700; background: var(--primary-light); color: var(--primary-dark); padding: 2px 6px; border-radius: 4px;">PRO</small></div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-menu">
+      <button class="nav-tab active" data-tab="storefront">
+        <i class="fa-solid fa-store"></i> Storefront
+      </button>
+      <button class="nav-tab" data-tab="my-orders" id="tabMyOrders" style="display: none;">
+        <i class="fa-solid fa-bag-shopping"></i> My Orders
+      </button>
+      <button class="nav-tab" data-tab="my-rx" id="tabMyRx" style="display: none;">
+        <i class="fa-solid fa-file-prescription"></i> My Prescriptions
+      </button>
+      <button class="nav-tab" data-tab="pharmacist" id="tabPharmacist" style="display: none;">
+        <i class="fa-solid fa-hand-holding-medical"></i> Pharmacist Portal
+      </button>
+      <button class="nav-tab" data-tab="admin" id="tabAdmin" style="display: none;">
+        <i class="fa-solid fa-chart-line"></i> Admin Dashboard
+      </button>
+    </nav>
+
+    <!-- User & Cart Actions -->
+    <div class="nav-actions">
+      <button class="cart-btn" id="cartBtn">
+        <i class="fa-solid fa-cart-shopping"></i> Cart
+        <span class="cart-badge" id="cartBadge" style="display: none;">0</span>
+      </button>
+
+      <div id="navUserSection">
+        <!-- Injected dynamically via app.js -->
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Body -->
+  <main class="container">
+
+    <!-- ======================================================================
+         TAB 1: STOREFRONT
+         ====================================================================== -->
+    <div class="tab-pane" id="pane-storefront" style="display: block;">
+      <!-- Hero Banner -->
+      <section class="hero-card">
+        <div class="hero-content">
+          <div class="hero-tag"><i class="fa-solid fa-award"></i> Licensed Online Healthcare</div>
+          <h1 class="hero-title">Your Trusted Pharmacy, Delivered Fast & Safe</h1>
+          <p class="hero-desc">Access genuine certified medications, consult professional pharmacists, and seamlessly upload physician prescriptions with real-time inventory tracking.</p>
+          <div class="hero-buttons">
+            <button class="btn btn-lg hero-btn-white" onclick="document.getElementById('searchInput').focus()">
+              <i class="fa-solid fa-magnifying-glass"></i> Find Medicines
+            </button>
+            <button class="btn btn-lg hero-btn-trans" onclick="openModal('uploadRxModal')">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Upload Prescription
+            </button>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <img src="images/hero-pharmacy.svg" alt="Certified Online Pharmacy Illustration">
+        </div>
+      </section>
+
+      <!-- Value Proposition Highlights Strip -->
+      <section class="features-strip">
+        <div class="feature-box">
+          <div class="feature-icon" style="background: #ecfdf5; color: #059669;">
+            <i class="fa-solid fa-shield-heart"></i>
+          </div>
+          <div>
+            <div class="feature-title">100% Genuine Medicine</div>
+            <div class="feature-subtitle">Sourced directly from certified labs</div>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div class="feature-icon" style="background: #f0f9ff; color: #0284c7;">
+            <i class="fa-solid fa-arrows-spin"></i>
+          </div>
+          <div>
+            <div class="feature-title">FEFO Fresh Inventory</div>
+            <div class="feature-subtitle">First-Expiry, First-Out batch guarantee</div>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div class="feature-icon" style="background: #fdf2f8; color: #db2777;">
+            <i class="fa-solid fa-user-doctor"></i>
+          </div>
+          <div>
+            <div class="feature-title">Clinical Rx Review</div>
+            <div class="feature-subtitle">Verified by registered pharmacists</div>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div class="feature-icon" style="background: #fefce8; color: #ca8a04;">
+            <i class="fa-solid fa-truck-fast"></i>
+          </div>
+          <div>
+            <div class="feature-title">Free Express Delivery</div>
+            <div class="feature-subtitle">Temperature-monitored safe courier</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Search & Filters Toolbar -->
+      <section class="toolbar-section">
+        <div class="search-row">
+          <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search by brand name, generic formula, or manufacturer...">
+          </div>
+
+          <select id="rxFilterSelect" class="filter-select">
+            <option value="">All Medication Types</option>
+            <option value="false">Over-the-Counter (OTC Only)</option>
+            <option value="true">Prescription Required (Rx Only)</option>
+          </select>
+        </div>
+
+        <!-- Category Pills -->
+        <div class="category-pills" id="categoryPills">
+          <!-- Injected dynamically -->
+        </div>
+      </section>
+
+      <!-- Medicine Grid -->
+      <section class="medicine-grid" id="medicineGrid">
+        <!-- Injected dynamically -->
+      </section>
+
+      <!-- Pagination -->
+      <div class="pagination-wrap" id="paginationWrap"></div>
+    </div>
+
+    <!-- ======================================================================
+         TAB 2: CUSTOMER MY ORDERS
+         ====================================================================== -->
+    <div class="tab-pane" id="pane-my-orders" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2><i class="fa-solid fa-clock-rotate-left"></i> My Orders & Invoices</h2>
+        <button class="btn btn-outline" onclick="loadMyOrders()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+      </div>
+      <div id="myOrdersContainer"></div>
+    </div>
+
+    <!-- ======================================================================
+         TAB 3: CUSTOMER MY PRESCRIPTIONS
+         ====================================================================== -->
+    <div class="tab-pane" id="pane-my-rx" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2><i class="fa-solid fa-file-medical"></i> My Uploaded Prescriptions</h2>
+        <button class="btn btn-primary" onclick="openModal('uploadRxModal')">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Upload New Prescription
+        </button>
+      </div>
+      <div id="myRxContainer"></div>
+    </div>
+
+    <!-- ======================================================================
+         TAB 4: PHARMACIST PORTAL
+         ====================================================================== -->
+    <div class="tab-pane" id="pane-pharmacist" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2><i class="fa-solid fa-stethoscope"></i> Pharmacist Management Portal</h2>
+        <button class="btn btn-outline" onclick="loadPharmacistPortal()"><i class="fa-solid fa-rotate"></i> Refresh All</button>
+      </div>
+
+      <!-- Expiring Batches Alert Banner -->
+      <div class="card" id="expiringBatchesAlert" style="display: none; background: #fffbeb; border-color: #fde68a; display: flex; align-items: center; gap: 16px;"></div>
+
+      <!-- Prescriptions Under Review -->
+      <div class="card">
+        <h3 class="card-title">
+          <span><i class="fa-solid fa-file-prescription"></i> Prescription Review Queue</span>
+        </h3>
+        <div class="table-responsive" id="pharmacistRxContainer"></div>
+      </div>
+
+      <!-- Order Fulfillment & Stock Restoration -->
+      <div class="card">
+        <h3 class="card-title">
+          <span><i class="fa-solid fa-dolly"></i> Customer Orders Fulfillment Flow</span>
+        </h3>
+        <div class="table-responsive" id="pharmacistOrdersContainer"></div>
+      </div>
+
+      <!-- Batches Inventory Table -->
+      <div class="card">
+        <h3 class="card-title">
+          <span><i class="fa-solid fa-boxes-stacked"></i> Batch Inventory Lots</span>
+          <button class="btn btn-primary btn-sm" onclick="openAddBatchModal()">
+            <i class="fa-solid fa-plus"></i> Add New Batch
+          </button>
+        </h3>
+        <div class="table-responsive" id="batchesTableContainer"></div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         TAB 5: ADMIN DASHBOARD
+         ====================================================================== -->
+    <div class="tab-pane" id="pane-admin" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2><i class="fa-solid fa-chart-pie"></i> Executive Administration Dashboard</h2>
+        <button class="btn btn-outline" onclick="loadAdminDashboard()"><i class="fa-solid fa-rotate"></i> Refresh Analytics</button>
+      </div>
+
+      <!-- Metric Cards -->
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-icon" style="background: #ccfbf1; color: #0d9488;">
+            <i class="fa-solid fa-dollar-sign"></i>
+          </div>
+          <div>
+            <div class="metric-val" id="adminTotalRevenue">$0.00</div>
+            <div class="metric-label">Total Net Revenue</div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon" style="background: #e0f2fe; color: #0284c7;">
+            <i class="fa-solid fa-cart-check"></i>
+          </div>
+          <div>
+            <div class="metric-val" id="adminTotalOrders">0</div>
+            <div class="metric-label">Completed Orders</div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon" style="background: #ede9fe; color: #7c3aed;">
+            <i class="fa-solid fa-receipt"></i>
+          </div>
+          <div>
+            <div class="metric-val" id="adminAvgOrderValue">$0.00</div>
+            <div class="metric-label">Average Order Value</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart and Low Stock Section -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
+        <div class="card">
+          <h3 class="card-title"><i class="fa-solid fa-chart-column"></i> Top Selling Medicines</h3>
+          <canvas id="topMedicinesChart" height="240"></canvas>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">
+            <span style="color: var(--warning);"><i class="fa-solid fa-bell"></i> Low Stock Alerts (&le; 10 units)</span>
+          </h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Medicine</th>
+                  <th>Category</th>
+                  <th>Stock Available</th>
+                  <th>Price</th>
+                </tr>
+              </thead>
+              <tbody id="adminLowStockTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Role Manager -->
+      <div class="card">
+        <h3 class="card-title"><i class="fa-solid fa-users-gear"></i> System User Management & Roles</h3>
+        <div class="table-responsive" id="adminUsersTableContainer"></div>
+      </div>
+
+      <!-- Categories & Medicines Catalog Management -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+        <div class="card">
+          <h3 class="card-title">
+            <span><i class="fa-solid fa-tags"></i> Medicine Categories</span>
+            <button class="btn btn-primary btn-sm" onclick="openModal('addCategoryModal')">
+              <i class="fa-solid fa-plus"></i> Add Category
+            </button>
+          </h3>
+          <div class="table-responsive" id="adminCategoriesTableContainer"></div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">
+            <span><i class="fa-solid fa-pills"></i> Master Medicines Catalog</span>
+            <button class="btn btn-primary btn-sm" onclick="openAddMedicineModal()">
+              <i class="fa-solid fa-plus"></i> Add Medicine
+            </button>
+          </h3>
+          <div class="table-responsive" id="adminMedicinesTableContainer"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ======================================================================
+       CART DRAWER
+       ====================================================================== -->
+  <div class="cart-overlay" id="cartOverlay"></div>
+  <aside class="cart-drawer" id="cartDrawer">
+    <div class="cart-header">
+      <h3><i class="fa-solid fa-bag-shopping" style="color: var(--primary);"></i> Shopping Cart</h3>
+      <button class="btn-close-drawer" id="closeCartBtn">&times;</button>
+    </div>
+    <div class="cart-body" id="cartBody">
+      <!-- Injected dynamically -->
+    </div>
+    <div class="cart-footer" id="cartFooter" style="display: none;">
+      <div class="rx-notice-box" id="cartRxNotice" style="display: none;">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.1rem;"></i>
+        <div>
+          <strong>Prescription Required:</strong> One or more items in your cart require a doctor prescription. An approved prescription must be selected at checkout.
+        </div>
+      </div>
+      <div class="cart-total-row">
+        <span>Order Subtotal:</span>
+        <span id="cartTotalAmount" style="color: var(--primary-dark);">$0.00</span>
+      </div>
+      <button class="btn btn-primary" style="width: 100%;" onclick="proceedToCheckout()">
+        <i class="fa-solid fa-lock"></i> Proceed to Secure Checkout
+      </button>
+    </div>
+  </aside>
+
+  <!-- ======================================================================
+       MODALS
+       ====================================================================== -->
+
+  <!-- Modal: Login -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-right-to-bracket" style="color: var(--primary);"></i> User Login</h3>
+        <button class="btn-close-drawer btn-close-modal">&times;</button>
+      </div>
+      <form id="loginForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" id="loginEmail" class="form-control" required placeholder="name@example.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="loginPassword" class="form-control" required placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Sign In</button>
+          
+          <div style="margin-top: 16px; text-align: center; font-size: 0.85rem;">
+            Don't have an account? <a href="javascript:void(0)" onclick="closeModal('loginModal'); openModal('registerModal');">Register Here</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Register -->
+  <div class="modal-overlay" id="registerModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-user-plus" style="color: var(--primary);"></i> Register New Customer</h3>
+        <button class="btn-close-drawer btn-close-modal">&times;</button>
+      </div>
+      <form id="registerForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" id="regName" class="form-control" required placeholder="John Doe">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" id="regEmail" class="form-control" required placeholder="john.doe@example.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password (min 8 characters)</label>
+            <input type="password" id="regPassword" class="form-control" required minlength="8" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input type="text" id="regPhone" class="form-control" placeholder="+8801700000000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Delivery Address</label>
+            <input type="text" id="regAddress" class="form-control" placeholder="House 12, Road 4, Dhaka">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Create Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Checkout -->
+  <div class="modal-overlay" id="checkoutModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-truck-fast" style="color: var(--primary);"></i> Complete Your Order</h3>
+        <button class="btn-close-drawer btn-close-modal">&times;</button>
+      </div>
+      <form id="checkoutForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Delivery Address</label>
+            <input type="text" id="checkoutAddress" class="form-control" required placeholder="Enter full delivery street address" minlength="5">
+          </div>
+
+          <!-- Prescription selection (conditional) -->
+          <div class="form-group" id="checkoutRxSection" style="display: none;">
+            <label class="form-label">Select Approved Prescription (Mandatory for Rx Items)</label>
+            <select id="checkoutPrescriptionSelect" class="form-control"></select>
+            <p id="checkoutRxWarning" style="display: none; color: var(--danger); font-size: 0.82rem; margin-top: 6px;">
+              ⚠️ You do not have an approved prescription yet. Please upload one first in "My Prescriptions".
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Select Payment Gateway</label>
+            <input type="hidden" id="checkoutPaymentMethod" value="cash_on_delivery">
+            <div class="payment-methods-grid">
+              <div class="payment-method-card selected" onclick="selectCheckoutPayment('cash_on_delivery', this)">
+                <i class="fa-solid fa-money-bill-wave" style="font-size: 1.4rem; color: #10b981;"></i>
+                <div>
+                  <strong style="display:block; font-size: 0.88rem;">Cash on Delivery</strong>
+                  <small style="color: var(--slate); font-size: 0.75rem;">Pay upon receipt</small>
+                </div>
+              </div>
+              <div class="payment-method-card" onclick="selectCheckoutPayment('bkash', this)">
+                <i class="fa-solid fa-mobile-screen-button" style="font-size: 1.4rem; color: #e11d48;"></i>
+                <div>
+                  <strong style="display:block; font-size: 0.88rem;">bKash Wallet</strong>
+                  <small style="color: var(--slate); font-size: 0.75rem;">Instant Mobile Pay</small>
+                </div>
+              </div>
+              <div class="payment-method-card" onclick="selectCheckoutPayment('nagad', this)">
+                <i class="fa-solid fa-wallet" style="font-size: 1.4rem; color: #ea580c;"></i>
+                <div>
+                  <strong style="display:block; font-size: 0.88rem;">Nagad Pay</strong>
+                  <small style="color: var(--slate); font-size: 0.75rem;">Fast Digital Wallet</small>
+                </div>
+              </div>
+              <div class="payment-method-card" onclick="selectCheckoutPayment('card', this)">
+                <i class="fa-solid fa-credit-card" style="font-size: 1.4rem; color: #0284c7;"></i>
+                <div>
+                  <strong style="display:block; font-size: 0.88rem;">Debit / Credit Card</strong>
+                  <small style="color: var(--slate); font-size: 0.75rem;">Visa & Mastercard</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Confirm & Place Order</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Payment -->
+  <div class="modal-overlay" id="paymentModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-credit-card" style="color: var(--primary);"></i> Order Payment</h3>
+        <button class="btn-close-drawer btn-close-modal">&times;</button>
+      </div>
+      <form id="paymentForm">
+        <div class="modal-body">
+          <input type="hidden" id="paymentOrderId">
+          <div style="background: #f8fafc; padding: 16px; border-radius: var(--radius-md); text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 0.85rem; color: var(--slate);">Payable Amount</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--primary-dark);" id="paymentAmountDisplay">$0.00</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Select Payment Gateway</label>
+            <input type="hidden" id="paymentMethodSelect" value="bkash">
+            <div class="payment-methods-grid">
+              <div class="payment-method-card selected" onclick="selectDirectPayment('bkash', this)">
+                <i class="fa-solid fa-mobile-screen-button" style="font-size: 1.4rem; color: #e11d48;"></i>
+                <div>
+                  <strong style="display:block; font-size: 0.88rem;">bKash Wallet</strong>
+                  <small style="color: var(--slate); font-size: 0.75rem;">Instant Settlement</small>
+                </div>
+              </div>
+              <div class="payment-method-card" onclick="selectDirectPayment('nagad', this)">
+                <i class="fa-solid fa-wallet" style="font-size: 1.4rem; color: #ea580c;"></i>
+                <div>
+                  <strong style="display:block; font-size: 0.88rem;">Nagad Wallet</strong>
+                  <small style="color: var(--slate); font-size: 0.75rem;">Fast Digital Wallet</small>
+                </div>
+              </div>
+              <div class="payment-method-card" onclick="selectDirectPayment('card', this)">
+                <i class="fa-solid fa-credit-card" style="font-size: 1.4rem; color: #0284c7;"></i>
+                <div>
+                  <strong style="display:block; font-size: 0.88rem;">Visa / Mastercard</strong>
+                  <small style="color: var(--slate); font-size: 0.75rem;">Debit / Credit</small>
+                </div>
+              </div>
+              <div class="payment-method-card" onclick="selectDirectPayment('cash_on_delivery', this)">
+                <i class="fa-solid fa-money-bill-wave" style="font-size: 1.4rem; color: #10b981;"></i>
+                <div>
+                  <strong style="display:block; font-size: 0.88rem;">Cash on Delivery</strong>
+                  <small style="color: var(--slate); font-size: 0.75rem;">Confirm Delivery</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Complete Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Upload Prescription -->
+  <div class="modal-overlay" id="uploadRxModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-file-medical" style="color: var(--primary);"></i> Upload Doctor Prescription</h3>
+        <button class="btn-close-drawer btn-close-modal">&times;</button>
+      </div>
+      <form id="uploadRxForm">
+        <div class="modal-body">
+          <p style="font-size: 0.88rem; color: var(--slate); margin-bottom: 16px;">
+            Please upload a clear scan or photograph of your physician's prescription (Allowed formats: JPG, PNG, PDF. Max file size: 5 MB).
+          </p>
+          <div class="form-group">
+            <label class="form-label">Prescription File</label>
+            <input type="file" id="rxFileInput" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Upload for Pharmacist Review</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add Batch (Pharmacist) -->
+  <div class="modal-overlay" id="addBatchModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-boxes-packing" style="color: var(--primary);"></i> Add Medicine Supply Batch</h3>
+        <button class="btn-close-drawer btn-close-modal">&times;</button>
+      </div>
+      <form id="addBatchForm" onsubmit="event.preventDefault(); submitAddBatch();">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Medicine</label>
+            <select id="batchMedicineSelect" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Batch Number / Lot Code</label>
+            <input type="text" id="batchNoInput" class="form-control" required placeholder="e.g. BATCH-2026-X">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Quantity</label>
+            <input type="number" id="batchQtyInput" class="form-control" required min="1" value="50">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expiry Date</label>
+            <input type="date" id="batchExpiryInput" class="form-control" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Save Batch to Inventory</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add Category (Admin) -->
+  <div class="modal-overlay" id="addCategoryModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-folder-plus" style="color: var(--primary);"></i> Add Medicine Category</h3>
+        <button class="btn-close-drawer btn-close-modal">&times;</button>
+      </div>
+      <form id="addCategoryForm" onsubmit="event.preventDefault(); submitAddCategory();">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Category Name</label>
+            <input type="text" id="catNameInput" class="form-control" required placeholder="e.g. Dermatology & Skin Care">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Create Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add Medicine (Admin) -->
+  <div class="modal-overlay" id="addMedicineModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-capsules" style="color: var(--primary);"></i> Add Medicine to Catalog</h3>
+        <button class="btn-close-drawer btn-close-modal">&times;</button>
+      </div>
+      <form id="addMedicineForm" onsubmit="event.preventDefault(); submitAddMedicine();">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="medCategorySelect" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Medicine Brand Name</label>
+            <input type="text" id="medNameInput" class="form-control" required placeholder="e.g. Paracetamol 500mg">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Generic Formula</label>
+            <input type="text" id="medGenericInput" class="form-control" placeholder="e.g. Paracetamol">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Manufacturer / Pharma Lab</label>
+            <input type="text" id="medManufacturerInput" class="form-control" placeholder="e.g. Square Pharmaceuticals">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Unit Price ($)</label>
+            <input type="number" step="0.01" min="0" id="medPriceInput" class="form-control" required placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+              <input type="checkbox" id="medRxCheckbox">
+              <span>Requires Doctor Prescription (Rx Only)</span>
+            </label>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Save Medicine</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Lightbox: Prescription Document Viewer -->
+  <div class="lightbox-overlay" id="lightboxModal" onclick="closeLightbox(event)">
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+      <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+      <img id="lightboxImage" class="lightbox-img" src="" alt="Prescription Document">
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Application Logic Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- Batch Modal Helper Script -->
+  <script>
+    async function openAddBatchModal() {
+      const select = document.getElementById('batchMedicineSelect');
+      if (select) {
+        select.innerHTML = state.medicines.map(m => `
+          <option value="${m.medicine_id}">${m.name}</option>
+        `).join('');
+      }
+      openModal('addBatchModal');
+    }
+
+    async function submitAddBatch() {
+      const medId = parseInt(document.getElementById('batchMedicineSelect').value, 10);
+      const batchNo = document.getElementById('batchNoInput').value.trim();
+      const qty = parseInt(document.getElementById('batchQtyInput').value, 10);
+      const expiry = document.getElementById('batchExpiryInput').value;
+
+      try {
+        await API.createBatch({
+          medicine_id: medId,
+          batch_no: batchNo,
+          quantity: qty,
+          expiry_date: expiry
+        });
+        closeModal('addBatchModal');
+        showToast('Batch added successfully!', 'success');
+        loadPharmacistBatches();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+  </script>
+
+</body>
+</html>
