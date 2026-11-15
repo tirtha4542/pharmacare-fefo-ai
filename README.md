@@ -76,23 +76,29 @@ JWT_EXPIRES_IN=1d
 
 > **Note:** The MySQL database user `pharma_user` must have full privileges on `pharmacy_db`.
 
-### Step 4: Initialize and Seed the Database
+### Step 4: Initialize and Seed the Database (ONE-TIME SETUP ONLY)
 Run the automated schema creation and seeding script:
 ```powershell
 npm run db:init
 ```
 This runs `database/schema.sql` and `database/seed.sql` and verifies that exactly 8 tables are present.
 
-### Step 5: Start the Server
+> [!WARNING]
+> **`npm run db:init` is a FACTORY RESET!**  
+> It drops all tables and resets data back to the default 5 demo accounts.  
+> **Only run it once** during initial installation or when you deliberately want a clean slate. **Do NOT run `npm run db:init` on daily startup**, or it will erase your newly registered users and custom orders.
+
+### Step 5: Daily Server Startup (Persistent Data)
+Whenever you start or restart your computer, your MySQL service (`MySQL80`) starts automatically in the background and preserves all your registered users. Simply run:
+- **Development mode (recommended):**
+  ```powershell
+  npm run dev
+  ```
 - **Production mode:**
   ```powershell
   npm start
   ```
-- **Development mode (with auto-reload via nodemon):**
-  ```powershell
-  npm run dev
-  ```
-Once started, open **`http://localhost:5000`** in any web browser to access the complete responsive Web UI!
+Once started, open **`http://localhost:5000`** in any web browser. Your registered accounts, orders, and uploaded prescriptions will persist permanently!
 
 ### Step 6: Verify System Health
 Visit `http://localhost:5000/api/health` in your browser or run:
@@ -285,4 +291,20 @@ All endpoints are prefixed with `/api`.
 - `database/seed.sql`: Realistic test data for all 8 tables.
 - `scripts/initDb.js`: Database migration and verification utility (`npm run db:init`).
 - `scripts/testSuite.js`: End-to-end integration test suite.
+
+---
+
+## 10. Role-Based AI Assistant Subsystem (Groq API)
+
+PharmaCare includes an integrated, role-governed AI Subsystem powered by Groq's high-speed inference engine (`qwen/qwen3.8-27b`) with native function/tool calling.
+
+### Architecture & Security Guarantees
+- **Strict Database Boundary:** The AI subsystem **never touches or queries the database directly** (no SQL queries or direct pool connections).
+- **Read-Only REST API Bridge:** All data access is mediated through internal HTTP `GET` requests (`aiApiDispatcher.js`) authenticated with the user's active JWT Bearer token.
+- **Backend Middleware Enforcement:** Even if the LLM attempts to request unauthorized resources, Express middleware (`protect` and `restrictTo`) strictly rejects the request with HTTP 403 Forbidden.
+- **Dynamic Role-Based Personas & Tool Filtering:**
+  - **Customer Role:** Operates as a *Patient Health Assistant*. Answers medication queries, dosage guidance, OTC status, side effects, and tracks personal orders. Strictly prohibited from accessing warehouse batches, supplier costs, or sales revenue.
+  - **Pharmacist Role:** Operates as a *Clinical & Inventory AI*. Inspects batch lots, identifies near-expiry stock (< 30 days) using FEFO, tracks low-stock lots (< 20 units), and monitors the fulfillment & prescription queue. Strictly barred from viewing sales revenue or financial analytics.
+  - **Admin Role:** Operates as an *Executive Operations AI*. Has complete visibility across financial performance (total revenue, AOV, order volume), operational inventory health, top-selling medicines, and user accounts.
+- **Frontend Widget:** A responsive, floating action button and chat window on the web portal with role-specific suggestion chips, streaming markdown rendering, and tool execution badges.
 

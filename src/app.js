@@ -20,6 +20,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const healthRoutes = require('./routes/healthRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 const app = express();
 
@@ -88,6 +89,7 @@ app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Handle undefined routes
 app.use(notFound);

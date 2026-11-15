@@ -12,9 +12,9 @@ const router = express.Router();
 
 router.use(protect);
 
-// Customer place order and check own orders
-router.post('/', restrictTo('customer'), validate(createOrderSchema), orderController.createOrder);
-router.get('/my', restrictTo('customer'), orderController.getMyOrders);
+// Customer, Pharmacist, and Admin can place orders and check own personal orders
+router.post('/', restrictTo('customer', 'pharmacist', 'admin'), validate(createOrderSchema), orderController.createOrder);
+router.get('/my', restrictTo('customer', 'pharmacist', 'admin'), orderController.getMyOrders);
 
 // Pharmacist/Admin get all orders
 router.get('/', restrictTo('pharmacist', 'admin'), orderController.getAllOrders);

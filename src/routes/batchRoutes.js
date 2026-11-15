@@ -19,6 +19,7 @@ router.get('/expiring', validate(queryExpiringSchema, 'query'), batchController.
 router.get('/', validate(queryBatchSchema, 'query'), batchController.getBatches);
 router.post('/', validate(createBatchSchema), batchController.createBatch);
 router.put('/:id', validate(updateBatchSchema), batchController.updateBatch);
+router.delete('/:id', batchController.deleteBatch);
 
 module.exports = router;
 

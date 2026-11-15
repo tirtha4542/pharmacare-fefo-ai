@@ -92,7 +92,7 @@ exports.getBatches = asyncHandler(async (req, res) => {
     params.push(parseInt(medicineId, 10));
   }
 
-  sql += ' ORDER BY b.expiry_date ASC';
+  sql += ' ORDER BY b.batch_id ASC';
 
   const [batches] = await pool.query(sql, params);
 
@@ -138,6 +138,27 @@ exports.getExpiringBatches = asyncHandler(async (req, res) => {
       expiring_batches: batches,
       count: batches.length
     }
+  });
+});
+
+// DELETE /api/batches/:id (admin, pharmacist)
+exports.deleteBatch = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  const [existing] = await pool.query(
+    'SELECT b.batch_id, b.batch_no, b.quantity, b.expiry_date, m.name AS medicine_name FROM batches b JOIN medicines m ON b.medicine_id = m.medicine_id WHERE b.batch_id = ?',
+    [id]
+  );
+
+  if (existing.length === 0) {
+    return next(new AppError(`Batch with ID ${id} not found`, 404));
+  }
+
+  await pool.query('DELETE FROM batches WHERE batch_id = ?', [id]);
+
+  res.status(200).json({
+    success: true,
+    message: `Batch #${id} (${existing[0].batch_no} - ${existing[0].medicine_name}) successfully removed from inventory.`
   });
 });
 

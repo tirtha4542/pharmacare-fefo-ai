@@ -83,9 +83,9 @@ INSERT INTO batches (batch_id, medicine_id, batch_no, quantity, expiry_date) VAL
 (14, 7, 'NAP-2024-01', 40, '2027-07-22'),
 (15, 7, 'NAP-2024-02', 50, '2028-03-30'),
 
--- Med 8: Tramadol (prescription)
-(16, 8, 'TRA-2024-01', 20, '2027-06-18'),
-(17, 8, 'TRA-2024-02', 35, '2027-12-25'),
+-- Med 8: Tramadol (prescription) - LOW STOCK (< 20)
+(16, 8, 'TRA-2024-01', 5, '2027-06-18'),
+(17, 8, 'TRA-2024-02', 10, '2027-12-25'),
 
 -- Med 9: Amlodipine (prescription)
 (18, 9, 'AML-2024-01', 85, '2027-09-14'),
@@ -111,9 +111,9 @@ INSERT INTO batches (batch_id, medicine_id, batch_no, quantity, expiry_date) VAL
 (28, 14, 'GLM-2024-01', 35, '2027-04-10'),
 (29, 14, 'GLM-2024-02', 60, '2027-10-25'),
 
--- Med 15: Sitagliptin (prescription) - LOW STOCK
+-- Med 15: Sitagliptin (prescription) - LOW STOCK (< 10)
 (30, 15, 'SIT-LOW-01', 4, '2027-06-30'), -- LOW STOCK (< 10)
-(31, 15, 'SIT-2024-02', 25, '2027-12-15'),
+(31, 15, 'SIT-2024-02', 4, '2027-12-15'),
 
 -- Med 16: Cetirizine (OTC)
 (32, 16, 'CET-2024-01', 90, '2027-05-20'),

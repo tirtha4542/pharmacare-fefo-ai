@@ -88,7 +88,7 @@ exports.getAllPrescriptions = asyncHandler(async (req, res) => {
     params.push(status);
   }
 
-  sql += ' ORDER BY p.uploaded_at DESC';
+  sql += ' ORDER BY p.prescription_id ASC';
 
   const [prescriptions] = await pool.query(sql, params);
 

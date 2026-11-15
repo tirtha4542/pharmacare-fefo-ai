@@ -37,9 +37,6 @@
       <button class="btn-demo-pill" id="demoAdminBtn">
         <i class="fa-solid fa-shield-halved"></i> Admin (Admin User)
       </button>
-      <button class="btn-demo-pill" id="demoLogoutBtn" style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4);">
-        <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
-      </button>
     </div>
   </div>
 
@@ -269,11 +266,11 @@
 
         <div class="metric-card">
           <div class="metric-icon" style="background: #e0f2fe; color: #0284c7;">
-            <i class="fa-solid fa-cart-check"></i>
+            <i class="fa-solid fa-clipboard-check"></i>
           </div>
           <div>
             <div class="metric-val" id="adminTotalOrders">0</div>
-            <div class="metric-label">Completed Orders</div>
+            <div class="metric-label">Total Orders</div>
           </div>
         </div>
 
@@ -296,17 +293,38 @@
         </div>
 
         <div class="card">
-          <h3 class="card-title">
-            <span style="color: var(--warning);"><i class="fa-solid fa-bell"></i> Low Stock Alerts (&le; 10 units)</span>
-          </h3>
-          <div class="table-responsive">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+            <h3 class="card-title" style="margin-bottom: 0;">
+              <span style="color: var(--warning);"><i class="fa-solid fa-triangle-exclamation"></i> Low Stock Alerts</span>
+              <span class="cart-badge" id="adminLowStockBadge" style="margin-left: 6px; font-size: 0.72rem; display: none;">0</span>
+            </h3>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div class="filter-toggle-group">
+                <button type="button" class="filter-toggle-btn active" id="lowStockTabBatches" onclick="switchLowStockMode('batches')">
+                  <i class="fa-solid fa-boxes-stacked"></i> Low Batches
+                </button>
+                <button type="button" class="filter-toggle-btn" id="lowStockTabMeds" onclick="switchLowStockMode('medicines')">
+                  <i class="fa-solid fa-capsules"></i> By Medicine
+                </button>
+              </div>
+              <select id="lowStockThresholdSelect" class="filter-select" onchange="loadAdminLowStock()" style="padding: 4px 12px; font-size: 0.8rem; border-radius: var(--radius-full); height: 32px;">
+                <option value="10" selected>&le; 10 units</option>
+                <option value="20">&le; 20 units</option>
+                <option value="30">&le; 30 units</option>
+                <option value="50">&le; 50 units</option>
+                <option value="100">&le; 100 units</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-responsive" id="adminLowStockContainer">
             <table class="data-table">
               <thead>
                 <tr>
                   <th>Medicine</th>
-                  <th>Category</th>
-                  <th>Stock Available</th>
-                  <th>Price</th>
+                  <th>Batch / Lot</th>
+                  <th>Quantity Left</th>
+                  <th>Expiry Date</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody id="adminLowStockTable"></tbody>
@@ -354,7 +372,7 @@
   <aside class="cart-drawer" id="cartDrawer">
     <div class="cart-header">
       <h3><i class="fa-solid fa-bag-shopping" style="color: var(--primary);"></i> Shopping Cart</h3>
-      <button class="btn-close-drawer" id="closeCartBtn">&times;</button>
+      <button class="btn-close-drawer" id="closeCartBtn" aria-label="Close Cart"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="cart-body" id="cartBody">
       <!-- Injected dynamically -->
@@ -385,7 +403,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <h3><i class="fa-solid fa-right-to-bracket" style="color: var(--primary);"></i> User Login</h3>
-        <button class="btn-close-drawer btn-close-modal">&times;</button>
+        <button class="btn-close-modal" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="loginForm">
         <div class="modal-body">
@@ -412,7 +430,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <h3><i class="fa-solid fa-user-plus" style="color: var(--primary);"></i> Register New Customer</h3>
-        <button class="btn-close-drawer btn-close-modal">&times;</button>
+        <button class="btn-close-modal" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="registerForm">
         <div class="modal-body">
@@ -447,7 +465,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <h3><i class="fa-solid fa-truck-fast" style="color: var(--primary);"></i> Complete Your Order</h3>
-        <button class="btn-close-drawer btn-close-modal">&times;</button>
+        <button class="btn-close-modal" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="checkoutForm">
         <div class="modal-body">
@@ -511,7 +529,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <h3><i class="fa-solid fa-credit-card" style="color: var(--primary);"></i> Order Payment</h3>
-        <button class="btn-close-drawer btn-close-modal">&times;</button>
+        <button class="btn-close-modal" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="paymentForm">
         <div class="modal-body">
@@ -565,7 +583,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <h3><i class="fa-solid fa-file-medical" style="color: var(--primary);"></i> Upload Doctor Prescription</h3>
-        <button class="btn-close-drawer btn-close-modal">&times;</button>
+        <button class="btn-close-modal" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="uploadRxForm">
         <div class="modal-body">
@@ -587,7 +605,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <h3><i class="fa-solid fa-boxes-packing" style="color: var(--primary);"></i> Add Medicine Supply Batch</h3>
-        <button class="btn-close-drawer btn-close-modal">&times;</button>
+        <button class="btn-close-modal" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="addBatchForm" onsubmit="event.preventDefault(); submitAddBatch();">
         <div class="modal-body">
@@ -618,7 +636,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <h3><i class="fa-solid fa-folder-plus" style="color: var(--primary);"></i> Add Medicine Category</h3>
-        <button class="btn-close-drawer btn-close-modal">&times;</button>
+        <button class="btn-close-modal" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="addCategoryForm" onsubmit="event.preventDefault(); submitAddCategory();">
         <div class="modal-body">
@@ -637,7 +655,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <h3><i class="fa-solid fa-capsules" style="color: var(--primary);"></i> Add Medicine to Catalog</h3>
-        <button class="btn-close-drawer btn-close-modal">&times;</button>
+        <button class="btn-close-modal" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="addMedicineForm" onsubmit="event.preventDefault(); submitAddMedicine();">
         <div class="modal-body">
@@ -673,6 +691,32 @@
     </div>
   </div>
 
+  <!-- Modal: Confirmation Dialog (Delete & Critical Actions) -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-box confirm-box" onclick="event.stopPropagation()">
+      <div class="confirm-body">
+        <div class="confirm-icon-wrap" id="confirmIconWrap">
+          <i class="fa-solid fa-trash-can" id="confirmIcon"></i>
+        </div>
+        <h3 class="confirm-title" id="confirmTitle">Confirm Permanent Deletion</h3>
+        <p class="confirm-desc" id="confirmDesc">Are you sure you want to delete this item? This action cannot be undone.</p>
+        <div class="confirm-item-pill" id="confirmItemPill" style="display: none;"></div>
+        <div class="confirm-note" id="confirmNote">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>Protected: Active inventory batches or order history will be protected by conflict check (409 Conflict).</span>
+        </div>
+      </div>
+      <div class="confirm-footer">
+        <button type="button" class="btn btn-outline confirm-btn-cancel" id="confirmCancelBtn">
+          <i class="fa-solid fa-xmark"></i> Cancel
+        </button>
+        <button type="button" class="btn btn-danger confirm-btn-action" id="confirmActionBtn">
+          <i class="fa-solid fa-trash-can"></i> <span id="confirmActionBtnText">Delete</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Lightbox: Prescription Document Viewer -->
   <div class="lightbox-overlay" id="lightboxModal" onclick="closeLightbox(event)">
     <div class="lightbox-content" onclick="event.stopPropagation()">
@@ -692,11 +736,56 @@
   <script>
     async function openAddBatchModal() {
       const select = document.getElementById('batchMedicineSelect');
-      if (select) {
-        select.innerHTML = state.medicines.map(m => `
-          <option value="${m.medicine_id}">${m.name}</option>
-        `).join('');
+      const batchNoInput = document.getElementById('batchNoInput');
+      const expiryInput = document.getElementById('batchExpiryInput');
+      const qtyInput = document.getElementById('batchQtyInput');
+
+      // Set min date to tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      if (expiryInput) {
+        expiryInput.min = tomorrowStr;
+        // Default to 18 months in the future
+        const defaultExpiry = new Date();
+        defaultExpiry.setMonth(defaultExpiry.getMonth() + 18);
+        expiryInput.value = defaultExpiry.toISOString().split('T')[0];
       }
+
+      // Generate suggested lot number
+      if (batchNoInput && !batchNoInput.value) {
+        const year = new Date().getFullYear();
+        const rand = Math.floor(100 + Math.random() * 900);
+        batchNoInput.value = `LOT-${year}-${rand}`;
+      }
+
+      if (qtyInput && !qtyInput.value) {
+        qtyInput.value = '50';
+      }
+
+      if (select) {
+        select.innerHTML = '<option value="">⏳ Loading all catalog medicines...</option>';
+        try {
+          // Fetch complete catalog of medicines (up to 100)
+          const res = await API.getMedicines({ limit: 100 });
+          const meds = res.data.medicines || [];
+
+          // Sort alphabetically by brand name
+          meds.sort((a, b) => a.name.localeCompare(b.name));
+
+          select.innerHTML = `
+            <option value="">-- Choose Medicine (${meds.length} Medicines Available) --</option>
+            ${meds.map(m => `
+              <option value="${m.medicine_id}">
+                ${escapeHtml(m.name)} • ${escapeHtml(m.category_name || 'General')} (${m.requires_prescription ? 'Rx Required' : 'OTC'}) - $${m.price.toFixed(2)}
+              </option>
+            `).join('')}
+          `;
+        } catch (err) {
+          select.innerHTML = '<option value="">⚠️ Failed to load medicines catalog</option>';
+        }
+      }
+
       openModal('addBatchModal');
     }
 
@@ -706,6 +795,23 @@
       const qty = parseInt(document.getElementById('batchQtyInput').value, 10);
       const expiry = document.getElementById('batchExpiryInput').value;
 
+      if (!medId) {
+        showToast('Please select a medicine from the catalog.', 'warning');
+        return;
+      }
+      if (!batchNo) {
+        showToast('Please provide a batch lot number.', 'warning');
+        return;
+      }
+      if (!qty || qty <= 0) {
+        showToast('Quantity must be greater than zero.', 'warning');
+        return;
+      }
+      if (!expiry) {
+        showToast('Please select a valid expiry date.', 'warning');
+        return;
+      }
+
       try {
         await API.createBatch({
           medicine_id: medId,
@@ -714,13 +820,74 @@
           expiry_date: expiry
         });
         closeModal('addBatchModal');
-        showToast('Batch added successfully!', 'success');
+        document.getElementById('addBatchForm').reset();
+        showToast('Batch added successfully to inventory!', 'success');
         loadPharmacistBatches();
       } catch (err) {
         showToast(err.message, 'error');
       }
     }
   </script>
+
+  <!-- ======================================================================
+       AI ROLE-BASED ASSISTANT WIDGET
+       ====================================================================== -->
+  <!-- Floating Moveable Action Button -->
+  <button id="aiChatToggleBtn" class="ai-fab-btn" title="PharmaCare AI • Drag to reposition anywhere on screen" aria-label="Open AI Assistant">
+    <span class="ai-drag-handle" title="Drag to move"><i class="fa-solid fa-grip-vertical"></i></span>
+    <div class="ai-fab-icon-wrap">
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
+    </div>
+    <span class="ai-fab-label">AI Assistant</span>
+    <span class="ai-fab-badge" id="aiRoleIndicator">AI</span>
+  </button>
+
+  <!-- Sliding AI Chat Window -->
+  <div id="aiChatWindow" class="ai-chat-window" style="display: none;">
+    <div class="ai-chat-header">
+      <div class="ai-header-info">
+        <div class="ai-avatar-circle">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div>
+          <h4 class="ai-header-title">PharmaCare AI</h4>
+          <span class="ai-role-badge" id="aiChatRoleBadge">Customer Health AI</span>
+        </div>
+      </div>
+      <div class="ai-header-actions">
+        <button id="aiChatClearBtn" class="ai-btn-icon" title="Clear Chat History">
+          <i class="fa-solid fa-arrow-rotate-left"></i>
+        </button>
+        <button id="aiChatCloseBtn" class="ai-btn-icon" title="Close Chat Window">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Contextual Quick Chips -->
+    <div class="ai-suggestion-section">
+      <div class="ai-suggestion-label"><i class="fa-solid fa-lightbulb"></i> Suggested for your role:</div>
+      <div class="ai-chips-container" id="aiSuggestionChips">
+        <!-- Injected dynamically based on role -->
+      </div>
+    </div>
+
+    <!-- Messages Flow -->
+    <div class="ai-chat-messages" id="aiChatMessages">
+      <!-- Injected dynamically -->
+    </div>
+
+    <!-- Input Form -->
+    <form id="aiChatForm" class="ai-chat-footer">
+      <input type="text" id="aiChatInput" class="ai-chat-input" placeholder="Ask about medicines, stock, orders..." autocomplete="off" required>
+      <button type="submit" id="aiChatSubmitBtn" class="ai-chat-send-btn" title="Send message">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </form>
+    <div class="ai-chat-disclaimer">
+      Powered by Groq API & internal read-only records. Strictly role-isolated.
+    </div>
+  </div>
 
 </body>
 </html>

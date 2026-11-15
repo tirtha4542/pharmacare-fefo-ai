@@ -13,15 +13,15 @@ const router = express.Router();
 
 router.use(protect);
 
-// Customer endpoints
+// Customer, Pharmacist, and Admin can upload and view personal prescriptions
 router.post(
   '/',
-  restrictTo('customer'),
+  restrictTo('customer', 'pharmacist', 'admin'),
   upload.single('prescription'),
   prescriptionController.uploadPrescription
 );
 
-router.get('/my', restrictTo('customer'), prescriptionController.getMyPrescriptions);
+router.get('/my', restrictTo('customer', 'pharmacist', 'admin'), prescriptionController.getMyPrescriptions);
 
 // Pharmacist & Admin endpoints
 router.get(

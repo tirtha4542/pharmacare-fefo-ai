@@ -85,6 +85,7 @@ const API = (() => {
     getExpiringBatches: (days = 30) => request(`/batches/expiring?days=${days}`),
     createBatch: (data) => request('/batches', { method: 'POST', body: JSON.stringify(data) }),
     updateBatch: (id, data) => request(`/batches/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteBatch: (id) => request(`/batches/${id}`, { method: 'DELETE' }),
 
     // Prescriptions
     uploadPrescription: (formData) => request('/prescriptions', { method: 'POST', body: formData }),
@@ -122,7 +123,13 @@ const API = (() => {
     getUsers: () => request('/users'),
     getUserById: (id) => request(`/users/${id}`),
     updateUserRole: (id, role) => request(`/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
-    deleteUser: (id) => request(`/users/${id}`, { method: 'DELETE' })
+    deleteUser: (id) => request(`/users/${id}`, { method: 'DELETE' }),
+
+    // AI Subsystem (Role-Based Assistant)
+    sendAiChat: (message, conversationHistory = []) => request('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, conversationHistory })
+    })
   };
 })();
 

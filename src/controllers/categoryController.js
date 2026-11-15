@@ -5,7 +5,7 @@ const asyncHandler = require('../utils/asyncHandler');
 // GET /api/categories (public)
 exports.getAllCategories = asyncHandler(async (req, res) => {
   const [categories] = await pool.query(
-    'SELECT category_id, name FROM categories ORDER BY name ASC'
+    'SELECT category_id, name FROM categories ORDER BY category_id ASC'
   );
 
   res.status(200).json({

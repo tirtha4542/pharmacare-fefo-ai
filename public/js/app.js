@@ -13,6 +13,7 @@ const state = {
   searchQuery: '',
   requiresPrescriptionFilter: '',
   activeTab: 'storefront',
+  lowStockMode: 'batches',
   charts: {}
 };
 
@@ -24,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadMedicines();
   updateCartBadge();
   initDemoAccountButtons();
+  initAiAssistant();
 });
 
 // Toast System
@@ -56,6 +58,14 @@ async function checkAuth() {
   try {
     const res = await API.getMe();
     state.user = res.data.user;
+    // Auto-align tab with authenticated role
+    if (state.user.role === 'customer' && ['pharmacist', 'admin'].includes(state.activeTab)) {
+      switchTab('storefront');
+    } else if (state.user.role === 'pharmacist' && ['my-orders', 'my-rx', 'admin'].includes(state.activeTab)) {
+      switchTab('pharmacist');
+    } else if (state.user.role === 'admin' && ['my-orders', 'my-rx', 'pharmacist'].includes(state.activeTab)) {
+      switchTab('admin');
+    }
   } catch {
     API.setToken(null);
     state.user = null;
@@ -72,29 +82,34 @@ function renderUserUI() {
 
   if (state.user) {
     const roleClass = `role-${state.user.role}`;
+    const avatarRoleClass = `role-avatar-${state.user.role}`;
+    const initial = (state.user.name || 'U').trim().charAt(0).toUpperCase();
+
     userSection.innerHTML = `
-      <div class="user-badge">
-        <i class="fa-solid fa-user-circle" style="color: var(--primary); font-size: 1.1rem;"></i>
-        <span>${escapeHtml(state.user.name)}</span>
+      <div class="user-badge" title="Signed in as ${escapeHtml(state.user.email)}">
+        <div class="user-avatar-circle ${avatarRoleClass}">${initial}</div>
+        <span class="user-name-text">${escapeHtml(state.user.name)}</span>
         <span class="user-role-tag ${roleClass}">${state.user.role}</span>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="logout()" title="Logout">
+      <button class="btn-logout" onclick="logout()" title="Logout from account">
         <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        <span>Logout</span>
       </button>
     `;
 
-    // Role-dependent tab display
-    if (myOrdersTab) myOrdersTab.style.display = state.user.role === 'customer' ? 'flex' : 'none';
-    if (myRxTab) myRxTab.style.display = state.user.role === 'customer' ? 'flex' : 'none';
-    if (pharmacistTab) pharmacistTab.style.display = ['pharmacist', 'admin'].includes(state.user.role) ? 'flex' : 'none';
-    if (adminTab) adminTab.style.display = state.user.role === 'admin' ? 'flex' : 'none';
+    // Strict Role-Based Tab Isolation (Each role only sees its dedicated tabs)
+    const role = state.user?.role;
+    if (myOrdersTab) myOrdersTab.style.display = role === 'customer' ? 'flex' : 'none';
+    if (myRxTab) myRxTab.style.display = role === 'customer' ? 'flex' : 'none';
+    if (pharmacistTab) pharmacistTab.style.display = role === 'pharmacist' ? 'flex' : 'none';
+    if (adminTab) adminTab.style.display = role === 'admin' ? 'flex' : 'none';
 
   } else {
     userSection.innerHTML = `
-      <button class="btn btn-outline btn-sm" onclick="openModal('loginModal')">
+      <button class="btn-nav-login" onclick="openModal('loginModal')">
         <i class="fa-solid fa-right-to-bracket"></i> Login
       </button>
-      <button class="btn btn-primary btn-sm" onclick="openModal('registerModal')">
+      <button class="btn-nav-register" onclick="openModal('registerModal')">
         <i class="fa-solid fa-user-plus"></i> Register
       </button>
     `;
@@ -105,6 +120,7 @@ function renderUserUI() {
   }
 
   updateDemoPillsState();
+  if (typeof updateAiRoleUI === 'function') updateAiRoleUI();
 }
 
 function updateDemoPillsState() {
@@ -147,7 +163,6 @@ function initDemoAccountButtons() {
   document.getElementById('demoAdminBtn')?.addEventListener('click', () => {
     demoLogin('admin@pharmacy.com', 'AdminPassword123!');
   });
-  document.getElementById('demoLogoutBtn')?.addEventListener('click', () => logout());
 }
 
 function logout() {
@@ -160,11 +175,20 @@ function logout() {
 
 // Tab Switching
 function switchTab(tabName) {
+  if (!tabName) return;
+
+  // Strict role guard: prevent cross-portal access
+  const role = state.user?.role;
+  if (role === 'customer' && ['pharmacist', 'admin'].includes(tabName)) return;
+  if (role === 'pharmacist' && ['my-orders', 'my-rx', 'admin'].includes(tabName)) return;
+  if (role === 'admin' && ['my-orders', 'my-rx', 'pharmacist'].includes(tabName)) return;
+  if (!role && ['my-orders', 'my-rx', 'pharmacist', 'admin'].includes(tabName)) return;
+
   state.activeTab = tabName;
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.navbar .nav-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
 
-  const tabBtn = document.querySelector(`[data-tab="${tabName}"]`);
+  const tabBtn = document.querySelector(`.navbar [data-tab="${tabName}"]`);
   if (tabBtn) tabBtn.classList.add('active');
 
   const pane = document.getElementById(`pane-${tabName}`);
@@ -483,6 +507,7 @@ function renderCartDrawer() {
 }
 
 function openCartDrawer() {
+  if (typeof setAiChatOpen === 'function') setAiChatOpen(false);
   document.getElementById('cartOverlay')?.classList.add('open');
   document.getElementById('cartDrawer')?.classList.add('open');
 }
@@ -576,7 +601,15 @@ async function submitOrder(e) {
     closeModal('checkoutModal');
     showToast(`Order #${res.data.order_id} placed successfully!`, 'success');
 
-    switchTab('my-orders');
+    if (state.user?.role === 'customer') {
+      switchTab('my-orders');
+    } else if (state.user?.role === 'pharmacist') {
+      switchTab('pharmacist');
+    } else if (state.user?.role === 'admin') {
+      switchTab('admin');
+    } else {
+      switchTab('storefront');
+    }
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -724,11 +757,6 @@ async function loadMyPrescriptions() {
     }
 
     container.innerHTML = `
-      <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
-        <button class="btn btn-primary" onclick="openModal('uploadRxModal')">
-          <i class="fa-solid fa-cloud-arrow-up"></i> Upload New Prescription
-        </button>
-      </div>
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
         ${prescriptions.map(p => `
           <div class="card" style="margin-bottom: 0;">
@@ -736,7 +764,7 @@ async function loadMyPrescriptions() {
               ${p.image_path.toLowerCase().endsWith('.pdf') ? `
                 <div style="text-align:center;"><i class="fa-solid fa-file-pdf" style="font-size: 3rem; color: #ef4444;"></i><p style="font-size:0.8rem; margin-top:4px;">PDF Document</p></div>
               ` : `
-                <img src="/${p.image_path}" alt="Prescription" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'fa-solid fa-image\' style=\'font-size:3rem; color:#94a3b8;\'></i>'">
+                <img src="/${p.image_path}" alt="Prescription #${p.prescription_id}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\'text-align:center;\\'><i class=\\'fa-solid fa-file-image\\' style=\\'font-size:3rem; color:#94a3b8;\\'></i><p style=\\'font-size:0.8rem; color:#94a3b8; margin-top:4px;\\'>Image File</p></div>'">
               `}
               <span class="status-pill status-${p.status}" style="position: absolute; top: 10px; right: 10px;">${p.status}</span>
             </div>
@@ -796,13 +824,13 @@ async function loadPharmacistPrescriptions() {
 
   try {
     const res = await API.getAllPrescriptions();
-    const list = res.data.prescriptions;
+    const list = (res.data.prescriptions || []).slice().sort((a, b) => a.prescription_id - b.prescription_id);
 
     container.innerHTML = `
       <table class="data-table">
         <thead>
           <tr>
-            <th>ID</th>
+            <th>#</th>
             <th>Customer</th>
             <th>Uploaded At</th>
             <th>Document</th>
@@ -811,9 +839,9 @@ async function loadPharmacistPrescriptions() {
           </tr>
         </thead>
         <tbody>
-          ${list.map(p => `
+          ${list.map((p, index) => `
             <tr>
-              <td>#${p.prescription_id}</td>
+              <td><strong>#${index + 1}</strong></td>
               <td><strong>${escapeHtml(p.customer_name)}</strong><br><small>${escapeHtml(p.customer_email)}</small></td>
               <td>${new Date(p.uploaded_at).toLocaleString()}</td>
               <td>
@@ -876,31 +904,37 @@ async function loadPharmacistBatches() {
 
     // 2. All batches
     const allRes = await API.getBatches();
-    const batches = allRes.data.batches;
+    const batches = (allRes.data.batches || []).slice().sort((a, b) => a.batch_id - b.batch_id);
 
     if (tableContainer) {
       tableContainer.innerHTML = `
         <table class="data-table">
           <thead>
             <tr>
-              <th>Batch ID</th>
+              <th>#</th>
               <th>Medicine</th>
               <th>Batch No</th>
               <th>Quantity</th>
               <th>Expiry Date</th>
               <th>Status</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            ${batches.map(b => `
+            ${batches.map((b, index) => `
               <tr>
-                <td>#${b.batch_id}</td>
+                <td><strong>#${index + 1}</strong></td>
                 <td><strong>${escapeHtml(b.medicine_name)}</strong></td>
                 <td><code>${escapeHtml(b.batch_no)}</code></td>
                 <td>${b.quantity}</td>
                 <td>${new Date(b.expiry_date).toLocaleDateString()}</td>
                 <td>
                   ${b.is_expired ? '<span class="status-pill status-rejected">Expired</span>' : '<span class="status-pill status-approved">Active</span>'}
+                </td>
+                <td>
+                  <button class="btn btn-danger btn-sm" onclick="deleteBatchPrompt(${b.batch_id}, decodeURIComponent('${encodeURIComponent(b.batch_no)}'), decodeURIComponent('${encodeURIComponent(b.medicine_name)}'), ${b.is_expired})" title="${b.is_expired ? 'Dispose expired inventory lot' : 'Delete batch'}">
+                    <i class="fa-solid fa-trash-can"></i> ${b.is_expired ? 'Dispose' : 'Delete'}
+                  </button>
                 </td>
               </tr>
             `).join('')}
@@ -913,19 +947,46 @@ async function loadPharmacistBatches() {
   }
 }
 
+async function deleteBatchPrompt(id, batchNo, medicineName, isExpired) {
+  const confirmed = await showConfirmDialog({
+    title: isExpired ? 'Dispose Expired Batch?' : 'Delete Inventory Batch?',
+    desc: isExpired
+      ? 'Are you sure you want to write off and permanently remove this expired medicine batch?'
+      : 'Are you sure you want to remove this supply batch from inventory?',
+    itemName: `${medicineName || 'Medicine'} (Lot ${batchNo || `#${id}`})`,
+    actionText: isExpired ? 'Dispose Expired Batch' : 'Delete Batch',
+    note: isExpired
+      ? 'Protected: Expired stock is already excluded from customer storefront sales.'
+      : 'Permanent action: This batch record will be deleted from the database.',
+    iconClass: isExpired ? 'fa-solid fa-trash-can' : 'fa-solid fa-trash-can'
+  });
+
+  if (!confirmed) return;
+
+  try {
+    const res = await API.deleteBatch(id);
+    showToast(res.message || 'Batch removed successfully.', 'success');
+    loadPharmacistBatches();
+    loadMedicines();
+    if (typeof loadAdminLowStock === 'function') loadAdminLowStock();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
 async function loadPharmacistOrders() {
   const container = document.getElementById('pharmacistOrdersContainer');
   if (!container) return;
 
   try {
     const res = await API.getAllOrders();
-    const orders = res.data.orders;
+    const orders = (res.data.orders || []).slice().sort((a, b) => a.order_id - b.order_id);
 
     container.innerHTML = `
       <table class="data-table">
         <thead>
           <tr>
-            <th>Order ID</th>
+            <th>#</th>
             <th>Customer</th>
             <th>Total Amount</th>
             <th>Payment</th>
@@ -934,9 +995,9 @@ async function loadPharmacistOrders() {
           </tr>
         </thead>
         <tbody>
-          ${orders.map(o => `
+          ${orders.map((o, index) => `
             <tr>
-              <td>#${o.order_id}</td>
+              <td><strong>#${index + 1}</strong> <span style="font-size:0.75rem; color:var(--slate-light); font-weight:normal;">(Order #${o.order_id})</span></td>
               <td>${escapeHtml(o.customer_name)}<br><small>${escapeHtml(o.customer_email)}</small></td>
               <td><strong>$${o.total_amount.toFixed(2)}</strong></td>
               <td><span class="status-pill status-${o.payment_status}">${o.payment_method} (${o.payment_status})</span></td>
@@ -982,19 +1043,7 @@ async function loadAdminDashboard() {
     document.getElementById('adminAvgOrderValue').textContent = `$${summary.average_order_value.toFixed(2)}`;
 
     // 2. Low Stock Report
-    const lowStockRes = await API.getLowStockReport(10);
-    const lowStock = lowStockRes.data.low_stock_medicines;
-    const lowStockTable = document.getElementById('adminLowStockTable');
-    if (lowStockTable) {
-      lowStockTable.innerHTML = lowStock.map(m => `
-        <tr>
-          <td><strong>${escapeHtml(m.name)}</strong></td>
-          <td>${escapeHtml(m.category_name)}</td>
-          <td><span class="stock-out font-bold">${m.available_stock} units left</span></td>
-          <td>$${m.price.toFixed(2)}</td>
-        </tr>
-      `).join('');
-    }
+    await loadAdminLowStock();
 
     // 3. Top Selling Chart
     const topRes = await API.getTopMedicinesReport(5);
@@ -1013,28 +1062,165 @@ async function loadAdminDashboard() {
   }
 }
 
+function switchLowStockMode(mode) {
+  state.lowStockMode = mode;
+  const tabBatches = document.getElementById('lowStockTabBatches');
+  const tabMeds = document.getElementById('lowStockTabMeds');
+  if (tabBatches && tabMeds) {
+    if (mode === 'batches') {
+      tabBatches.classList.add('active');
+      tabMeds.classList.remove('active');
+    } else {
+      tabMeds.classList.add('active');
+      tabBatches.classList.remove('active');
+    }
+  }
+  loadAdminLowStock();
+}
+
+async function loadAdminLowStock() {
+  const container = document.getElementById('adminLowStockContainer');
+  const badge = document.getElementById('adminLowStockBadge');
+  const thresholdSelect = document.getElementById('lowStockThresholdSelect');
+  const threshold = parseInt(thresholdSelect?.value || 10, 10);
+  const mode = state.lowStockMode || 'batches';
+
+  if (!container) return;
+
+  try {
+    const res = await API.getLowStockReport(threshold);
+    const data = res.data;
+    const lowMeds = (data.low_stock_medicines || []).filter(m => m.available_stock <= threshold);
+    const lowBatches = (data.low_stock_batches || []).filter(b => b.quantity <= threshold);
+
+    const activeCount = mode === 'batches' ? lowBatches.length : lowMeds.length;
+
+    if (badge) {
+      badge.textContent = activeCount;
+      badge.style.display = activeCount > 0 ? 'inline-block' : 'none';
+    }
+
+    if (mode === 'batches') {
+      if (lowBatches.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--slate);">
+            <i class="fa-solid fa-circle-check" style="font-size: 2.2rem; color: #10b981; margin-bottom: 8px;"></i>
+            <h4 style="color: var(--dark); margin-bottom: 4px;">All Batches Healthy</h4>
+            <p style="font-size: 0.85rem;">No active batches found with quantity &le; ${threshold} units.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Medicine</th>
+              <th>Batch / Lot</th>
+              <th>Category</th>
+              <th>Quantity Left</th>
+              <th>Expiry Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="adminLowStockTable">
+            ${lowBatches.map(b => {
+              const isOut = b.quantity <= 0;
+              const isCrit = b.quantity > 0 && b.quantity <= 5;
+              const statusClass = isOut ? 'status-rejected' : (isCrit ? 'status-rejected' : 'status-pending');
+              const statusLabel = isOut ? 'Depleted' : (isCrit ? 'Critical Low' : 'Low Stock');
+              return `
+                <tr>
+                  <td><strong>${escapeHtml(b.medicine_name)}</strong></td>
+                  <td><code>${escapeHtml(b.batch_no)}</code></td>
+                  <td>${escapeHtml(b.category_name)}</td>
+                  <td><span class="${isOut ? 'stock-out' : 'stock-low'} font-bold">${b.quantity} unit${b.quantity === 1 ? '' : 's'}</span></td>
+                  <td>${new Date(b.expiry_date).toLocaleDateString()}</td>
+                  <td><span class="status-pill ${statusClass}">${statusLabel}</span></td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    } else {
+      // By Medicine (Total non-expired inventory)
+      if (lowMeds.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--slate);">
+            <i class="fa-solid fa-circle-check" style="font-size: 2.2rem; color: #10b981; margin-bottom: 8px;"></i>
+            <h4 style="color: var(--dark); margin-bottom: 4px;">Optimal Stock Levels</h4>
+            <p style="font-size: 0.85rem;">No medicines found with total stock &le; ${threshold} units.</p>
+            <p style="font-size: 0.8rem; color: var(--slate); margin-top: 6px;">
+              Tip: Switch to <strong>Low Batches</strong> above to see individual lots near exhaustion.
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Medicine</th>
+              <th>Category</th>
+              <th>Total Stock</th>
+              <th>Lowest Lot</th>
+              <th>Unit Price</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="adminLowStockTable">
+            ${lowMeds.map(m => {
+              const isOut = m.available_stock <= 0;
+              const isCrit = m.available_stock <= 10;
+              const statusClass = isOut ? 'status-rejected' : (isCrit ? 'status-rejected' : 'status-pending');
+              const statusLabel = isOut ? 'Depleted' : (isCrit ? 'Critical Low' : 'Low Stock');
+              return `
+                <tr>
+                  <td><strong>${escapeHtml(m.name)}</strong><br><small style="color: var(--slate);">${escapeHtml(m.manufacturer || '')}</small></td>
+                  <td>${escapeHtml(m.category_name)}</td>
+                  <td><span class="${isOut ? 'stock-out' : 'stock-low'} font-bold">${m.available_stock} unit${m.available_stock === 1 ? '' : 's'}</span></td>
+                  <td><span class="status-pill ${m.min_batch_qty <= 0 ? 'status-rejected' : 'status-pending'}" style="font-size:0.75rem;">Lot: ${m.min_batch_qty} left</span></td>
+                  <td>$${m.price.toFixed(2)}</td>
+                  <td><span class="status-pill ${statusClass}">${statusLabel}</span></td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+  } catch (err) {
+    container.innerHTML = `<p style="color: var(--danger); padding: 20px;">Failed to load low-stock alerts: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
 async function loadAdminCategories() {
   const container = document.getElementById('adminCategoriesTableContainer');
   if (!container) return;
   try {
     const res = await API.getCategories();
+    const categories = (res.data.categories || []).slice().sort((a, b) => a.category_id - b.category_id);
     container.innerHTML = `
       <table class="data-table">
         <thead>
           <tr>
-            <th>ID</th>
+            <th>#</th>
             <th>Category Name</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          ${res.data.categories.map(c => `
+          ${categories.map((c, index) => `
             <tr>
-              <td>#${c.category_id}</td>
+              <td><strong>#${index + 1}</strong></td>
               <td><strong>${escapeHtml(c.name)}</strong></td>
               <td>
-                <button class="btn btn-danger btn-sm" onclick="deleteCategoryPrompt(${c.category_id}, '${escapeHtml(c.name)}')">
-                  <i class="fa-solid fa-trash"></i> Delete
+                <button class="btn btn-danger btn-sm" onclick="deleteCategoryPrompt(${c.category_id}, decodeURIComponent('${encodeURIComponent(c.name)}'))" title="Delete Category">
+                  <i class="fa-solid fa-trash-can"></i> Delete
                 </button>
               </td>
             </tr>
@@ -1063,10 +1249,19 @@ async function submitAddCategory() {
 }
 
 async function deleteCategoryPrompt(id, name) {
-  if (!confirm(`Are you sure you want to delete category "${name}"?`)) return;
+  const confirmed = await showConfirmDialog({
+    title: 'Delete Category?',
+    desc: 'Are you sure you want to remove this therapeutic category from the database?',
+    itemName: name || `Category #${id}`,
+    actionText: 'Delete Category',
+    note: 'Protected: If any medicines are assigned to this category, deletion will be blocked by system integrity rules (409 Conflict).'
+  });
+
+  if (!confirmed) return;
+
   try {
     const res = await API.deleteCategory(id);
-    showToast(res.message, 'success');
+    showToast(res.message || 'Category deleted successfully.', 'success');
     loadCategories();
     loadAdminCategories();
   } catch (err) {
@@ -1083,7 +1278,7 @@ async function loadAdminMedicines() {
       <table class="data-table">
         <thead>
           <tr>
-            <th>ID</th>
+            <th>#</th>
             <th>Name</th>
             <th>Category</th>
             <th>Price</th>
@@ -1092,16 +1287,16 @@ async function loadAdminMedicines() {
           </tr>
         </thead>
         <tbody>
-          ${res.data.medicines.map(m => `
+          ${res.data.medicines.map((m, index) => `
             <tr>
-              <td>#${m.medicine_id}</td>
+              <td><strong>#${index + 1}</strong></td>
               <td><strong>${escapeHtml(m.name)}</strong><br><small>${escapeHtml(m.manufacturer || '')}</small></td>
               <td>${escapeHtml(m.category_name)}</td>
               <td>$${m.price.toFixed(2)}</td>
               <td>${m.requires_prescription ? '<span class="status-pill status-rejected">Rx</span>' : '<span class="status-pill status-approved">OTC</span>'}</td>
               <td>
-                <button class="btn btn-danger btn-sm" onclick="deleteMedicinePrompt(${m.medicine_id}, '${escapeHtml(m.name)}')">
-                  <i class="fa-solid fa-trash"></i>
+                <button class="btn btn-danger btn-sm" onclick="deleteMedicinePrompt(${m.medicine_id}, decodeURIComponent('${encodeURIComponent(m.name)}'))" title="Delete Medicine">
+                  <i class="fa-solid fa-trash-can"></i>
                 </button>
               </td>
             </tr>
@@ -1114,12 +1309,20 @@ async function loadAdminMedicines() {
   }
 }
 
-function openAddMedicineModal() {
+async function openAddMedicineModal() {
   const select = document.getElementById('medCategorySelect');
   if (select) {
-    select.innerHTML = state.categories.map(c => `
-      <option value="${c.category_id}">${escapeHtml(c.name)}</option>
-    `).join('');
+    try {
+      if (!state.categories || state.categories.length === 0) {
+        const res = await API.getCategories();
+        state.categories = res.data.categories || [];
+      }
+      select.innerHTML = state.categories.map(c => `
+        <option value="${c.category_id}">${escapeHtml(c.name)}</option>
+      `).join('');
+    } catch {
+      select.innerHTML = '<option value="">Failed to load categories</option>';
+    }
   }
   openModal('addMedicineModal');
 }
@@ -1152,10 +1355,19 @@ async function submitAddMedicine() {
 }
 
 async function deleteMedicinePrompt(id, name) {
-  if (!confirm(`Are you sure you want to delete medicine "${name}"?`)) return;
+  const confirmed = await showConfirmDialog({
+    title: 'Delete Medicine?',
+    desc: 'Are you sure you want to permanently remove this medicine from the catalog?',
+    itemName: name || `Medicine #${id}`,
+    actionText: 'Delete Medicine',
+    note: 'Protected: If this medicine has active inventory batches or past order history, deletion will be blocked by system integrity rules (409 Conflict).'
+  });
+
+  if (!confirmed) return;
+
   try {
     const res = await API.deleteMedicine(id);
-    showToast(res.message, 'success');
+    showToast(res.message || 'Medicine deleted successfully.', 'success');
     loadMedicines();
     loadAdminMedicines();
   } catch (err) {
@@ -1219,7 +1431,7 @@ async function loadAdminUsers() {
       <table class="data-table">
         <thead>
           <tr>
-            <th>ID</th>
+            <th>#</th>
             <th>Name</th>
             <th>Email</th>
             <th>Role</th>
@@ -1227,9 +1439,9 @@ async function loadAdminUsers() {
           </tr>
         </thead>
         <tbody>
-          ${users.map(u => `
+          ${users.map((u, index) => `
             <tr>
-              <td>#${u.user_id}</td>
+              <td><strong>#${index + 1}</strong></td>
               <td><strong>${escapeHtml(u.name)}</strong></td>
               <td>${escapeHtml(u.email)}</td>
               <td><span class="user-role-tag role-${u.role}">${u.role}</span></td>
@@ -1258,6 +1470,90 @@ async function changeUserRole(userId, newRole) {
   } catch (err) {
     showToast(err.message, 'error');
   }
+}
+
+// Custom Attractive Confirmation Dialog
+function showConfirmDialog({
+  title = 'Confirm Permanent Deletion',
+  desc = 'Are you sure you want to delete this item? This action cannot be undone.',
+  itemName = '',
+  actionText = 'Delete',
+  note = 'Protected: Active inventory batches or order history will be protected by conflict check (409 Conflict).',
+  iconClass = 'fa-solid fa-trash-can'
+} = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmModal');
+    const titleEl = document.getElementById('confirmTitle');
+    const descEl = document.getElementById('confirmDesc');
+    const pillEl = document.getElementById('confirmItemPill');
+    const noteEl = document.getElementById('confirmNote');
+    const actionBtn = document.getElementById('confirmActionBtn');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    const actionTextEl = document.getElementById('confirmActionBtnText');
+    const iconEl = document.getElementById('confirmIcon');
+
+    if (!modal) {
+      resolve(window.confirm(`${title}\n${desc}`));
+      return;
+    }
+
+    if (titleEl) titleEl.textContent = title;
+    if (descEl) descEl.textContent = desc;
+
+    if (pillEl) {
+      if (itemName) {
+        pillEl.innerHTML = `<i class="fa-solid fa-tag"></i> <span>${escapeHtml(itemName)}</span>`;
+        pillEl.style.display = 'inline-flex';
+      } else {
+        pillEl.style.display = 'none';
+      }
+    }
+
+    if (noteEl) {
+      if (note) {
+        noteEl.innerHTML = `<i class="fa-solid fa-shield-halved"></i> <span>${escapeHtml(note)}</span>`;
+        noteEl.style.display = 'flex';
+      } else {
+        noteEl.style.display = 'none';
+      }
+    }
+
+    if (actionTextEl) actionTextEl.textContent = actionText;
+    if (iconEl && iconClass) iconEl.className = iconClass;
+
+    function cleanup() {
+      modal.classList.remove('open');
+      actionBtn?.removeEventListener('click', onConfirm);
+      cancelBtn?.removeEventListener('click', onCancel);
+      modal.removeEventListener('click', onBackdrop);
+      window.removeEventListener('keydown', onKeyDown);
+    }
+
+    function onConfirm() {
+      cleanup();
+      resolve(true);
+    }
+
+    function onCancel() {
+      cleanup();
+      resolve(false);
+    }
+
+    function onBackdrop(e) {
+      if (e.target === modal) onCancel();
+    }
+
+    function onKeyDown(e) {
+      if (e.key === 'Escape') onCancel();
+    }
+
+    actionBtn?.addEventListener('click', onConfirm);
+    cancelBtn?.addEventListener('click', onCancel);
+    modal.addEventListener('click', onBackdrop);
+    window.addEventListener('keydown', onKeyDown);
+
+    modal.classList.add('open');
+  });
 }
 
 // Modal Helpers
@@ -1289,10 +1585,11 @@ function setupEventListeners() {
     loadMedicines();
   });
 
-  // Navigation tabs
-  document.querySelectorAll('.nav-tab').forEach(tab => {
+  // Navigation tabs (main navbar only)
+  document.querySelectorAll('.navbar .nav-tab[data-tab]').forEach(tab => {
     tab.addEventListener('click', () => {
-      switchTab(tab.getAttribute('data-tab'));
+      const tabName = tab.getAttribute('data-tab');
+      if (tabName) switchTab(tabName);
     });
   });
 
@@ -1309,6 +1606,13 @@ function setupEventListeners() {
     });
   });
 
+  // Close modals when clicking backdrop overlay
+  document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+  });
+
   // Form Submissions
   document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1321,6 +1625,13 @@ function setupEventListeners() {
       closeModal('loginModal');
       renderUserUI();
       showToast(`Welcome back, ${res.data.user.name}!`, 'success');
+      if (res.data.user.role === 'pharmacist') {
+        switchTab('pharmacist');
+      } else if (res.data.user.role === 'admin') {
+        switchTab('admin');
+      } else {
+        switchTab('storefront');
+      }
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -1360,5 +1671,549 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+/* ======================================================================
+   ROLE-BASED AI SUBSYSTEM (GROQ API INTEGRATION)
+   ====================================================================== */
+const aiState = {
+  isOpen: false,
+  currentUserId: null,
+  conversations: {},
+  history: [],
+  isSending: false
+};
+
+function saveCurrentAiConversation() {
+  const userKey = aiState.currentUserId || (state.user ? String(state.user.user_id) : 'guest');
+  const container = document.getElementById('aiChatMessages');
+  if (!container) return;
+  const data = {
+    history: aiState.history || [],
+    html: container.innerHTML
+  };
+  try {
+    sessionStorage.setItem(`ai_chat_${userKey}`, JSON.stringify(data));
+  } catch (e) {
+    // fallback if sessionStorage unavailable
+  }
+  aiState.conversations[userKey] = data;
+}
+
+function loadAiConversation(userKey) {
+  try {
+    const raw = sessionStorage.getItem(`ai_chat_${userKey}`);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return aiState.conversations[userKey] || null;
+}
+
+function clearAiConversationStorage(userKey) {
+  try {
+    sessionStorage.removeItem(`ai_chat_${userKey}`);
+  } catch (e) {}
+  delete aiState.conversations[userKey];
+}
+
+const AI_SUGGESTIONS = {
+  customer: [
+    { label: '💊 Side effects of Sitagliptin', text: 'What is Sitagliptin and what are its common side effects?' },
+    { label: '📋 Does Amoxicillin need Rx?', text: 'Does Amoxicillin 500mg require a doctor prescription?' },
+    { label: '📦 Status of my orders', text: 'Can you check the current status of my recent orders?' },
+    { label: '🔍 Pain relief medicines', text: 'Which OTC medicines are available in the catalog for fast pain relief?' }
+  ],
+  pharmacist: [
+    { label: '⚠️ Batches expiring in 30 days', text: 'Which medicine batches are expiring within the next 30 days?' },
+    { label: '📉 Check low stock lots', text: 'Which inventory lots have fallen below critical stock (< 20 units)?' },
+    { label: '📋 Pending prescriptions queue', text: 'Are there any customer prescriptions currently waiting for clinical review?' },
+    { label: '📦 Orders in fulfillment', text: 'List the customer orders currently waiting to be confirmed or shipped.' }
+  ],
+  admin: [
+    { label: '📊 Total revenue & sales overview', text: 'Please provide our total net revenue, total completed orders, and average order value.' },
+    { label: '🏆 Top 5 selling medicines', text: 'What are our top 5 best-selling medicines by volume and generated revenue?' },
+    { label: '📉 Low stock inventory health', text: 'Give me a management summary of all medicines near exhaustion.' },
+    { label: '👥 Registered users & staff', text: 'How many customer and staff accounts are currently registered in the system?' }
+  ]
+};
+
+function initAiAssistant() {
+  const closeBtn = document.getElementById('aiChatCloseBtn');
+  const clearBtn = document.getElementById('aiChatClearBtn');
+  const form = document.getElementById('aiChatForm');
+
+  initDraggableAiButton();
+
+  closeBtn?.addEventListener('click', () => setAiChatOpen(false));
+  clearBtn?.addEventListener('click', clearAiChatHistory);
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('aiChatInput');
+    const text = input ? input.value.trim() : '';
+    if (text) {
+      input.value = '';
+      sendAiMessage(text);
+    }
+  });
+
+  updateAiRoleUI();
+
+  // Expose helpers globally for HTML inline handlers
+  window.handleAiChipClick = handleAiChipClick;
+  window.clearAiChatHistory = clearAiChatHistory;
+  window.toggleAiChat = toggleAiChat;
+  window.setAiChatOpen = setAiChatOpen;
+}
+
+function initDraggableAiButton() {
+  const btn = document.getElementById('aiChatToggleBtn');
+  if (!btn) return;
+
+  // Restore saved position if present
+  try {
+    const saved = localStorage.getItem('ai_btn_pos');
+    if (saved) {
+      const pos = JSON.parse(saved);
+      if (typeof pos.left === 'number' && typeof pos.top === 'number') {
+        const maxLeft = Math.max(10, window.innerWidth - 180);
+        const maxTop = Math.max(10, window.innerHeight - 60);
+        const clampLeft = Math.min(Math.max(10, pos.left), maxLeft);
+        const clampTop = Math.min(Math.max(10, pos.top), maxTop);
+        btn.style.left = `${clampLeft}px`;
+        btn.style.top = `${clampTop}px`;
+        btn.style.right = 'auto';
+        btn.style.bottom = 'auto';
+      }
+    }
+  } catch (e) {}
+
+  let isPointerDown = false;
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let initialLeft = 0;
+  let initialTop = 0;
+  let hasMoved = false;
+
+  btn.addEventListener('pointerdown', (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+
+    isPointerDown = true;
+    hasMoved = false;
+    startX = e.clientX;
+    startY = e.clientY;
+
+    const rect = btn.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+
+    btn.setPointerCapture(e.pointerId);
+  });
+
+  btn.addEventListener('pointermove', (e) => {
+    if (!isPointerDown) return;
+
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
+    const dist = Math.hypot(deltaX, deltaY);
+
+    if (dist > 5) {
+      if (!isDragging) {
+        isDragging = true;
+        btn.classList.add('is-dragging');
+      }
+      hasMoved = true;
+
+      const rect = btn.getBoundingClientRect();
+      const minLeft = 10;
+      const maxLeft = window.innerWidth - rect.width - 10;
+      const minTop = 10;
+      const maxTop = window.innerHeight - rect.height - 10;
+
+      let newLeft = initialLeft + deltaX;
+      let newTop = initialTop + deltaY;
+
+      newLeft = Math.min(Math.max(minLeft, newLeft), Math.max(minLeft, maxLeft));
+      newTop = Math.min(Math.max(minTop, newTop), Math.max(minTop, maxTop));
+
+      btn.style.left = `${newLeft}px`;
+      btn.style.top = `${newTop}px`;
+      btn.style.right = 'auto';
+      btn.style.bottom = 'auto';
+
+      if (aiState.isOpen) {
+        positionAiChatWindow();
+      }
+    }
+  });
+
+  const onPointerUp = (e) => {
+    if (!isPointerDown) return;
+    isPointerDown = false;
+
+    if (isDragging) {
+      btn.classList.remove('is-dragging');
+      isDragging = false;
+
+      try {
+        const rect = btn.getBoundingClientRect();
+        localStorage.setItem('ai_btn_pos', JSON.stringify({ left: rect.left, top: rect.top }));
+      } catch (err) {}
+    }
+
+    try {
+      btn.releasePointerCapture(e.pointerId);
+    } catch (err) {}
+  };
+
+  btn.addEventListener('pointerup', onPointerUp);
+  btn.addEventListener('pointercancel', onPointerUp);
+
+  // Toggle chat only if not dragged
+  btn.addEventListener('click', (e) => {
+    if (hasMoved) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      hasMoved = false;
+      return;
+    }
+    toggleAiChat();
+  });
+
+  window.addEventListener('resize', () => {
+    const rect = btn.getBoundingClientRect();
+    const maxLeft = window.innerWidth - rect.width - 10;
+    const maxTop = window.innerHeight - rect.height - 10;
+    if (rect.left > maxLeft || rect.top > maxTop) {
+      const clampLeft = Math.min(rect.left, Math.max(10, maxLeft));
+      const clampTop = Math.min(rect.top, Math.max(10, maxTop));
+      btn.style.left = `${clampLeft}px`;
+      btn.style.top = `${clampTop}px`;
+      btn.style.right = 'auto';
+      btn.style.bottom = 'auto';
+    }
+    if (aiState.isOpen) {
+      positionAiChatWindow();
+    }
+  });
+}
+
+function positionAiChatWindow() {
+  const windowEl = document.getElementById('aiChatWindow');
+  const btn = document.getElementById('aiChatToggleBtn');
+  if (!windowEl || !btn) return;
+
+  const btnRect = btn.getBoundingClientRect();
+  const winWidth = Math.min(440, window.innerWidth - 32);
+  const winHeight = Math.min(620, window.innerHeight - 100);
+
+  let left = btnRect.right - winWidth;
+  if (left < 16) left = btnRect.left;
+  if (left < 16) left = 16;
+  if (left + winWidth > window.innerWidth - 16) {
+    left = window.innerWidth - winWidth - 16;
+  }
+
+  let top = btnRect.top - winHeight - 12;
+  if (top < 16) {
+    top = btnRect.bottom + 12;
+  }
+  if (top + winHeight > window.innerHeight - 16) {
+    top = window.innerHeight - winHeight - 16;
+  }
+  if (top < 16) top = 16;
+
+  windowEl.style.left = `${left}px`;
+  windowEl.style.top = `${top}px`;
+  windowEl.style.right = 'auto';
+  windowEl.style.bottom = 'auto';
+}
+
+function toggleAiChat() {
+  setAiChatOpen(!aiState.isOpen);
+}
+
+function setAiChatOpen(open) {
+  aiState.isOpen = open;
+  const windowEl = document.getElementById('aiChatWindow');
+  if (windowEl) {
+    windowEl.style.display = open ? 'flex' : 'none';
+    if (open) {
+      positionAiChatWindow();
+    }
+  }
+
+  if (open) {
+    updateAiRoleUI();
+    const container = document.getElementById('aiChatMessages');
+    if (container && container.children.length === 0) {
+      renderWelcomeAiMessage();
+    }
+    setTimeout(() => document.getElementById('aiChatInput')?.focus(), 150);
+  }
+}
+
+function updateAiRoleUI() {
+  const role = state.user?.role || 'customer';
+  const newUserId = state.user ? String(state.user.user_id) : 'guest';
+  const roleBadge = document.getElementById('aiChatRoleBadge');
+  const roleIndicator = document.getElementById('aiRoleIndicator');
+  const chipsContainer = document.getElementById('aiSuggestionChips');
+  const container = document.getElementById('aiChatMessages');
+
+  const titles = {
+    customer: 'Customer Health AI',
+    pharmacist: 'Pharmacist Clinical AI',
+    admin: 'Executive Admin AI'
+  };
+
+  const badgeLabels = {
+    customer: 'Patient AI',
+    pharmacist: 'Pharma AI',
+    admin: 'Admin AI'
+  };
+
+  if (roleBadge) roleBadge.textContent = titles[role] || 'PharmaCare AI';
+  if (roleIndicator) roleIndicator.textContent = badgeLabels[role] || 'AI';
+
+  if (chipsContainer) {
+    const suggestions = AI_SUGGESTIONS[role] || AI_SUGGESTIONS.customer;
+    chipsContainer.innerHTML = suggestions.map(s => `
+      <button type="button" class="ai-chip" onclick="handleAiChipClick(decodeURIComponent('${encodeURIComponent(s.text)}'))">
+        ${escapeHtml(s.label)}
+      </button>
+    `).join('');
+  }
+
+  // Strict session and conversation isolation between users/roles
+  if (aiState.currentUserId !== newUserId) {
+    // 1. Save previous user's conversation if active
+    if (aiState.currentUserId !== null) {
+      saveCurrentAiConversation();
+    }
+
+    // 2. Switch active user ID
+    aiState.currentUserId = newUserId;
+
+    // Reset typed input
+    const inputEl = document.getElementById('aiChatInput');
+    if (inputEl) inputEl.value = '';
+
+    // 3. Load conversation for the new user or start clean
+    const saved = loadAiConversation(newUserId);
+    if (saved && saved.html && Array.isArray(saved.history) && saved.history.length > 0) {
+      aiState.history = [...saved.history];
+      if (container) {
+        container.innerHTML = saved.html;
+        container.scrollTop = container.scrollHeight;
+      }
+    } else {
+      aiState.history = [];
+      if (container) {
+        container.innerHTML = '';
+        renderWelcomeAiMessage();
+      }
+    }
+  } else {
+    // Same user: ensure container has welcome message if empty
+    if (container && container.children.length === 0) {
+      renderWelcomeAiMessage();
+    }
+  }
+}
+
+function renderWelcomeAiMessage() {
+  const container = document.getElementById('aiChatMessages');
+  if (!container) return;
+
+  const role = state.user?.role || 'customer';
+  const name = state.user?.name || 'there';
+
+  let greeting = '';
+  if (role === 'customer') {
+    greeting = `Hello <strong>${escapeHtml(name)}</strong>! 👋 I am your <strong>PharmaCare Health Assistant</strong>.<br><br>I can help you with medicine information, side effects, precautions, OTC requirements, or tracking your personal orders.<br><br><em>How can I assist your health today?</em>`;
+  } else if (role === 'pharmacist') {
+    greeting = `Welcome <strong>${escapeHtml(name)}</strong>! 🩺 I am your <strong>Clinical & Inventory Assistant</strong>.<br><br>I can inspect batch lot numbers, track near-expiry batches (FEFO), review low stock alerts, or check pending prescriptions and fulfillment queues.<br><br><em>What inventory or clinical task should we check?</em>`;
+  } else {
+    greeting = `Welcome <strong>${escapeHtml(name)}</strong>! 📊 I am your <strong>Executive Operations AI</strong>.<br><br>I have full visibility across business revenue, order fulfillment, best-selling medicines, and inventory health.<br><br><em>Ready to analyze system performance.</em>`;
+  }
+
+  container.innerHTML = `
+    <div class="ai-msg ai-msg-assistant">
+      <div class="ai-msg-avatar"><i class="fa-solid fa-robot"></i></div>
+      <div class="ai-bubble">${greeting}</div>
+    </div>
+  `;
+}
+
+function handleAiChipClick(text) {
+  const input = document.getElementById('aiChatInput');
+  if (input) input.value = text;
+  sendAiMessage(text);
+}
+
+function clearAiChatHistory() {
+  aiState.history = [];
+  const currentKey = aiState.currentUserId || (state.user ? String(state.user.user_id) : 'guest');
+  clearAiConversationStorage(currentKey);
+  const container = document.getElementById('aiChatMessages');
+  if (container) container.innerHTML = '';
+  renderWelcomeAiMessage();
+  showToast('AI conversation reset for this account.', 'success');
+}
+
+async function sendAiMessage(userText) {
+  if (aiState.isSending) return;
+
+  if (!state.user) {
+    showToast('Please log in or select a demo account to chat with AI.', 'warning');
+    openModal('loginModal');
+    return;
+  }
+
+  const messagesContainer = document.getElementById('aiChatMessages');
+  const inputEl = document.getElementById('aiChatInput');
+  const submitBtn = document.getElementById('aiChatSubmitBtn');
+  if (!messagesContainer) return;
+
+  // Append user message bubble
+  const userMsgEl = document.createElement('div');
+  userMsgEl.className = 'ai-msg ai-msg-user';
+  userMsgEl.innerHTML = `
+    <div class="ai-msg-avatar"><i class="fa-solid fa-user"></i></div>
+    <div class="ai-bubble">${escapeHtml(userText)}</div>
+  `;
+  messagesContainer.appendChild(userMsgEl);
+
+  // Append typing indicator
+  const typingEl = document.createElement('div');
+  typingEl.className = 'ai-msg ai-msg-assistant';
+  typingEl.id = 'aiTypingIndicator';
+  typingEl.innerHTML = `
+    <div class="ai-msg-avatar"><i class="fa-solid fa-robot"></i></div>
+    <div class="ai-typing-indicator">
+      <div class="ai-typing-dot"></div>
+      <div class="ai-typing-dot"></div>
+      <div class="ai-typing-dot"></div>
+    </div>
+  `;
+  messagesContainer.appendChild(typingEl);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  // Lock input during request
+  aiState.isSending = true;
+  if (inputEl) inputEl.disabled = true;
+  if (submitBtn) submitBtn.disabled = true;
+
+  try {
+    const res = await API.sendAiChat(userText, aiState.history);
+    typingEl.remove();
+
+    const data = res.data;
+    const replyText = data?.reply || 'I received your request.';
+    const toolsUsed = data?.toolsUsed || [];
+
+    // Append to local history
+    aiState.history.push({ role: 'user', content: userText });
+    aiState.history.push({ role: 'assistant', content: replyText });
+
+    // Format tool usage badges if any tool was executed
+    let toolBadgeHtml = '';
+    if (toolsUsed.length > 0) {
+      toolBadgeHtml = `
+        <div style="margin-bottom: 6px;">
+          ${toolsUsed.map(t => `
+            <span class="ai-tool-tag" title="Read-only API call">
+              <i class="fa-solid fa-bolt" style="color: #0d9488;"></i> Executed: ${escapeHtml(t.name)}
+            </span>
+          `).join(' ')}
+        </div>
+      `;
+    }
+
+    // Append assistant bubble
+    const aiMsgEl = document.createElement('div');
+    aiMsgEl.className = 'ai-msg ai-msg-assistant';
+    aiMsgEl.innerHTML = `
+      <div class="ai-msg-avatar"><i class="fa-solid fa-robot"></i></div>
+      <div class="ai-bubble">
+        ${toolBadgeHtml}
+        <div>${formatAiMarkdown(replyText)}</div>
+      </div>
+    `;
+    messagesContainer.appendChild(aiMsgEl);
+
+  } catch (err) {
+    typingEl.remove();
+    const errMsgEl = document.createElement('div');
+    errMsgEl.className = 'ai-msg ai-msg-assistant';
+    errMsgEl.innerHTML = `
+      <div class="ai-msg-avatar" style="background:#fee2e2; color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div class="ai-bubble" style="border-color:#fecaca; background:#fff5f5; color:#991b1b;">
+        <strong>AI Assistant Error:</strong> ${escapeHtml(err.message)}
+      </div>
+    `;
+    messagesContainer.appendChild(errMsgEl);
+  } finally {
+    saveCurrentAiConversation();
+    aiState.isSending = false;
+    if (inputEl) {
+      inputEl.disabled = false;
+      inputEl.focus();
+    }
+    if (submitBtn) submitBtn.disabled = false;
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+}
+
+function formatAiMarkdown(text) {
+  if (!text) return '';
+  let html = escapeHtml(text);
+
+  // Markdown Tables
+  html = html.replace(/((?:\|[^\n]+\|\r?\n)+)/g, (tableMatch) => {
+    const lines = tableMatch.trim().split(/\r?\n/);
+    if (lines.length < 2) return tableMatch;
+    let tableHtml = '<div style="overflow-x:auto; margin: 8px 0;"><table style="border-collapse: collapse; width: 100%; font-size: 0.8rem;">';
+    let isHeader = true;
+    for (const line of lines) {
+      if (line.match(/^\|(?:\s*[:-]+[-| :]*)\|$/)) {
+        isHeader = false;
+        continue;
+      }
+      const cells = line.split('|').slice(1, -1);
+      tableHtml += '<tr>';
+      for (const cell of cells) {
+        tableHtml += isHeader
+          ? `<th style="border: 1px solid #cbd5e1; padding: 6px 8px; background: #f8fafc; font-weight:700;">${cell.trim()}</th>`
+          : `<td style="border: 1px solid #cbd5e1; padding: 5px 8px;">${cell.trim()}</td>`;
+      }
+      tableHtml += '</tr>';
+      isHeader = false;
+    }
+    tableHtml += '</table></div>';
+    return tableHtml;
+  });
+
+  // Headers
+  html = html.replace(/^### (.*$)/gim, '<h5 style="margin: 8px 0 4px; font-weight:700; color:#0f172a;">$1</h5>');
+  html = html.replace(/^## (.*$)/gim, '<h4 style="margin: 10px 0 6px; font-weight:700; color:#0f766e;">$1</h4>');
+
+  // Bold & Italics
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+  // Inline Code
+  html = html.replace(/`([^`]+)`/g, '<code style="background:#f1f5f9; color:#0f766e; padding:2px 5px; border-radius:4px; font-size:0.8rem;">$1</code>');
+
+  // Unordered list items
+  html = html.replace(/^\* (.*$)/gim, '<li>$1</li>');
+  html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
+  html = html.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul style="margin: 6px 0 6px 18px; padding:0;">$1</ul>');
+  html = html.replace(/<\/ul>\s*<ul[^>]*>/g, '');
+
+  // Line breaks
+  html = html.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
+
+  return html;
 }
 

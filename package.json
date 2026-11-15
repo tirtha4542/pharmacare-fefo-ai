@@ -4,8 +4,8 @@
   "description": "Production-ready REST API for Online Pharmacy Management System",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node init && node server.js",
+    "dev": "node init && nodemon server.js",
     "db:init": "node scripts/initDb.js",
     "test": "node scripts/testSuite.js"
   },

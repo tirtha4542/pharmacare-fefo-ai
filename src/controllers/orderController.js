@@ -337,7 +337,7 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
     sql += ` WHERE ${where.join(' AND ')}`;
   }
 
-  sql += ' ORDER BY o.created_at DESC';
+  sql += ' ORDER BY o.order_id ASC';
 
   const [orders] = await pool.query(sql, params);
 

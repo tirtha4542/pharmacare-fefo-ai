@@ -88,7 +88,8 @@ exports.getLowStockReport = asyncHandler(async (req, res) => {
       m.manufacturer,
       c.name AS category_name,
       m.price,
-      COALESCE(SUM(CASE WHEN b.expiry_date >= CURDATE() THEN b.quantity ELSE 0 END), 0) AS available_stock
+      COALESCE(SUM(CASE WHEN b.expiry_date >= CURDATE() THEN b.quantity ELSE 0 END), 0) AS available_stock,
+      MIN(CASE WHEN b.expiry_date >= CURDATE() THEN b.quantity ELSE NULL END) AS min_batch_qty
     FROM medicines m
     JOIN categories c ON m.category_id = c.category_id
     LEFT JOIN batches b ON m.medicine_id = b.medicine_id
@@ -102,7 +103,34 @@ exports.getLowStockReport = asyncHandler(async (req, res) => {
   const medicines = rows.map((r) => ({
     ...r,
     price: parseFloat(r.price),
-    available_stock: parseInt(r.available_stock, 10)
+    available_stock: parseInt(r.available_stock, 10),
+    min_batch_qty: r.min_batch_qty !== null ? parseInt(r.min_batch_qty, 10) : 0
+  }));
+
+  // Also query individual non-expired inventory batches with low stock
+  const batchSql = `
+    SELECT 
+      b.batch_id,
+      b.batch_no,
+      b.quantity,
+      b.expiry_date,
+      m.medicine_id,
+      m.name AS medicine_name,
+      m.price,
+      c.name AS category_name
+    FROM batches b
+    JOIN medicines m ON b.medicine_id = m.medicine_id
+    JOIN categories c ON m.category_id = c.category_id
+    WHERE b.quantity <= ? AND b.expiry_date >= CURDATE()
+    ORDER BY b.quantity ASC, b.expiry_date ASC
+  `;
+
+  const [batchRows] = await pool.query(batchSql, [threshold]);
+
+  const batches = batchRows.map((b) => ({
+    ...b,
+    price: parseFloat(b.price),
+    quantity: parseInt(b.quantity, 10)
   }));
 
   res.status(200).json({
@@ -110,7 +138,9 @@ exports.getLowStockReport = asyncHandler(async (req, res) => {
     data: {
       threshold,
       low_stock_medicines: medicines,
-      count: medicines.length
+      low_stock_batches: batches,
+      count: medicines.length,
+      batch_count: batches.length
     }
   });
 });
